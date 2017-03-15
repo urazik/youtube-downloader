@@ -10,6 +10,7 @@ import (
 	"strings"
 	"github.com/urfave/cli"
 	"errors"
+	"path/filepath"
 )
 
 type progress struct {
@@ -40,7 +41,6 @@ func (pr *progress) Read(p []byte) (int, error) {
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "yvd"
 	app.Usage = "dowload video from YouTube"
 	app.Version = "0.1.0"
 
@@ -82,14 +82,16 @@ func main() {
 		}
 	}
 
-	err := app.Run(os.Args)
-	check(err)
+	app.Run(os.Args)
 }
 
 func openfile(path string) []string {
-	urls := make([]string, 0)
-	file, err := ioutil.ReadFile(path)
+	absPath, err := filepath.Abs(path)
 	check(err)
+	file, err := ioutil.ReadFile(absPath)
+	check(err)
+
+	urls := make([]string, 0)
 
 	for _, s := range strings.Split(string(file), "\n") {
 		urls = append(urls, s)
@@ -142,7 +144,13 @@ func urlParsing(u string) (string, string, error) {
 	return URLEncodedFmtStreamMap["url"][0], title, nil
 }
 
-func createFile(path string) *os.File {
+func createFile(dir, title string) *os.File {
+	if strings.LastIndex(dir, string(filepath.Separator)) != len(dir)-1 {
+		dir = dir + string(filepath.Separator)
+	}
+
+	path := dir + title + ".mp4"
+
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		err := os.Remove(path)
 		check(err)
@@ -150,7 +158,6 @@ func createFile(path string) *os.File {
 
 	out, err := os.Create(path)
 	check(err)
-	defer out.Close()
 
 	return out
 }
@@ -162,7 +169,8 @@ func download(urls []string, dir string) {
 		dUrl, title, err := urlParsing(u)
 		check(err)
 
-		out := createFile(dir + title + ".mp4")
+		out := createFile(dir, title)
+		defer out.Close()
 
 		resp, err := http.Get(dUrl)
 		check(err)
@@ -179,7 +187,7 @@ func download(urls []string, dir string) {
 
 func check(err error) {
 	if err != nil {
-		fmt.Println("Oops, some error! Check the urls")
+		fmt.Println("Oops, some error! Check the urls or file path")
 		os.Exit(0)
 	}
 }
