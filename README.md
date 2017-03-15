@@ -19,5 +19,5 @@ https://www.youtube.com/watch?v=<video_id>
 ```
 ### Download to a specific directory
 ```
-$ go run download.go -url https://www.youtube.com/watch?v=<video_id> --dir <path>
+$ go run download.go --url https://www.youtube.com/watch?v=<video_id> --dir <path>
 ```

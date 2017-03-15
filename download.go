@@ -42,7 +42,6 @@ func (pr *progress) Read(p []byte) (int, error) {
 func main() {
 	app := cli.NewApp()
 	app.Usage = "dowload video from YouTube"
-	app.Version = "0.1.0"
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -163,6 +162,8 @@ func createFile(dir, title string) *os.File {
 }
 
 func download(urls []string, dir string) {
+	fmt.Print("Start download\n")
+
 	for _, u := range urls {
 		fmt.Println()
 
@@ -183,6 +184,8 @@ func download(urls []string, dir string) {
 		})
 		check(err)
 	}
+
+	fmt.Print("\n\nDownload end")
 }
 
 func check(err error) {
