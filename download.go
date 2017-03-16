@@ -21,9 +21,12 @@ type progress struct {
 }
 
 func (pr *progress) Read(p []byte) (int, error) {
-	n, err := pr.Reader.Read(p)
+	var (
+		n   int
+		err error
+	)
 
-	if err == nil {
+	if n, err = pr.Reader.Read(p); err == nil {
 		pr.current += int64(n)
 		var bytesToMB float64 = 1048576
 
@@ -67,7 +70,9 @@ func main() {
 			if c.String("u") != "" {
 				urls = append(urls, c.String("u"))
 			} else if c.String("f") != "" {
-				urls = openfile(c.String("f"))
+				urls = getUrlsFromFile(c.String("f"))
+			} else {
+				return
 			}
 
 			if c.String("d") != "" {
@@ -84,7 +89,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-func openfile(path string) []string {
+func getUrlsFromFile(path string) []string {
 	absPath, err := filepath.Abs(path)
 	check(err)
 	file, err := ioutil.ReadFile(absPath)
@@ -190,7 +195,7 @@ func download(urls []string, dir string) {
 
 func check(err error) {
 	if err != nil {
-		fmt.Println("Oops, some error! Check the urls or file path")
+		fmt.Println("Oops, some error! Check the urls or file path.")
 		os.Exit(0)
 	}
 }
