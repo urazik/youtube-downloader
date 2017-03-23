@@ -1,16 +1,15 @@
-package main
+package download
 
 import (
-	"net/url"
+	"errors"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
-	"io"
-	"fmt"
-	"strings"
-	"github.com/urfave/cli"
-	"errors"
 	"path/filepath"
+	"strings"
 )
 
 type progress struct {
@@ -42,54 +41,7 @@ func (pr *progress) Read(p []byte) (int, error) {
 	return n, err
 }
 
-func main() {
-	app := cli.NewApp()
-	app.Usage = "dowload video from YouTube"
-
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:  "u, url",
-			Usage: "YouTube video url",
-		},
-
-		cli.StringFlag{
-			Name:  "d, dir",
-			Usage: "path to download dir",
-		},
-
-		cli.StringFlag{
-			Name:  "f, file",
-			Usage: "file with urls",
-		},
-	}
-
-	app.Action = func(c *cli.Context) {
-		if c.NArg() == 0 {
-			var urls []string
-
-			if c.String("u") != "" {
-				urls = append(urls, c.String("u"))
-			} else if c.String("f") != "" {
-				urls = getUrlsFromFile(c.String("f"))
-			} else {
-				return
-			}
-
-			if c.String("d") != "" {
-				download(urls, c.String("d"))
-				return
-			} else {
-				download(urls, "")
-			}
-		} else {
-			cli.ShowAppHelp(c)
-		}
-	}
-
-	app.Run(os.Args)
-}
-
-func getUrlsFromFile(path string) []string {
+func GetUrlsFromFile(path string) []string {
 	absPath, err := filepath.Abs(path)
 	check(err)
 	file, err := ioutil.ReadFile(absPath)
@@ -166,7 +118,7 @@ func createFile(dir, title string) *os.File {
 	return out
 }
 
-func download(urls []string, dir string) {
+func Download(urls []string, dir string) {
 	fmt.Print("Start download\n")
 
 	for _, u := range urls {
