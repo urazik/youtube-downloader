@@ -27,11 +27,11 @@ $ go run main.go --url https://www.youtube.com/watch?v=<video_id> --dir <path>
 package main
 
 import (
-	"github.com/lavrs/youtube-downloader/download"
+	"github.com/lavrs/youtube-downloader"
 )
 
 func main() {
-	var urls []string = []string{"https://www.youtube.com/watch?v=cUBMQznYuBM"}
+	var urls []string = []string{"https://www.youtube.com/watch?v=<video_id>"}
 	var dir string = "/home/lavrs/download"
 
 	download.Download(urls, dir)

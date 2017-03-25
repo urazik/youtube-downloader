@@ -1,7 +1,7 @@
 package main
 
 import (
-	d "github.com/lavrs/youtube-downloader/download"
+	d "github.com/lavrs/youtube-downloader"
 	"github.com/urfave/cli"
 	"os"
 )
