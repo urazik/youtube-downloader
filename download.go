@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"log"
 )
 
 type progress struct {
@@ -147,7 +148,6 @@ func Download(urls []string, dir string) {
 
 func check(err error) {
 	if err != nil {
-		fmt.Println("Oops, some error! Check the urls or file path.")
-		os.Exit(0)
+		log.Fatal("Oops, some error! Check the urls or file path.", err)
 	}
 }
