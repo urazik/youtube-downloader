@@ -98,7 +98,7 @@ func urlParsing(url string) (string, string) {
 		log.Fatal(upErr)
 	}
 
-    // parse video meta
+	// parse video meta
 	meta, err := u.ParseQuery(string(body))
 	if err != nil {
 		log.Fatal(upErr)
@@ -107,13 +107,13 @@ func urlParsing(url string) (string, string) {
 		log.Fatal(upErr)
 	}
 
-    // get download video urls
+	// get download video urls
 	dUrls, err := u.ParseQuery(meta["url_encoded_fmt_stream_map"][0])
 	if err != nil {
 		log.Fatal(upErr)
 	}
 
-    // to create a file in windows
+	// to create a file in windows
 	r := strings.NewReplacer(
 		"\\", "",
 		"/", "",
@@ -132,21 +132,21 @@ func urlParsing(url string) (string, string) {
 // create file
 func createFile(dir, title string) *os.File {
 	// check for path separator
-    if strings.LastIndex(dir, string(filepath.Separator)) != len(dir)-1 {
+	if strings.LastIndex(dir, string(filepath.Separator)) != len(dir)-1 {
 		dir = dir + string(filepath.Separator)
 	}
 
-    // check for file exists
+	// check for file exists
 	path := dir + title + ".mp4"
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
-        // if exists -> remove
+		// if exists -> remove
 		err := os.Remove(path)
 		if err != nil {
 			log.Fatal(cfErr)
 		}
 	}
 
-    // create file
+	// create file
 	out, err := os.Create(path)
 	if err != nil {
 		log.Fatal(cfErr)
@@ -158,7 +158,7 @@ func createFile(dir, title string) *os.File {
 func Start(url, file, dir string) {
 	var urls []string
 
-    // cli returns url or file
+	// cli returns url or file
 	if url != "" {
 		urls = append(urls, url)
 	} else {
@@ -170,14 +170,14 @@ func Start(url, file, dir string) {
 	for _, url := range urls {
 		fmt.Println()
 
-        // parse url
+		// parse url
 		dUrl, title := urlParsing(url)
 
-        // create file
+		// create file
 		out := createFile(dir, title)
 		defer out.Close()
 
-        // download video
+		// download video
 		resp, err := http.Get(dUrl)
 		if err != nil {
 			log.Fatal(dErr)
