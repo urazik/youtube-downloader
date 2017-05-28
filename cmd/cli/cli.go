@@ -14,9 +14,9 @@ func main() {
 	)
 	flag.Parse()
 
-	if *file != "" || *url != "" {
-		d.Start(*url, *file, *dir)
-	} else {
+	if *file == "" || *url == "" {
 		fmt.Println("Usage error! Insert url or file")
+		return
 	}
+	d.Start(*url, *file, *dir)
 }
