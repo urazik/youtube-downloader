@@ -5,22 +5,21 @@ This application allows you to download videos from YouTube
 ### CLI
 #### Download by url
 ```
-$ go run main.go -u https://www.youtube.com/watch?v=<video_id>
+$ go run cli.go -url=https://www.youtube.com/watch?v=<video_id>
 ```
 #### Download from file
 ```
-$ go run main.go --file <path>
+$ go run cli.go -file=<path>
 ```
 ##### Example of a file structure
 ```
 https://www.youtube.com/watch?v=<video_id>
 https://www.youtube.com/watch?v=<video_id>
 https://www.youtube.com/watch?v=<video_id>
-...
 ```
 #### Download to a specific directory
 ```
-$ go run main.go --url https://www.youtube.com/watch?v=<video_id> --dir <path>
+$ go run cli.go -url=https://www.youtube.com/watch?v=<video_id> -dir=<path>
 ```
 ### Go
 ```go
@@ -31,9 +30,11 @@ import (
 )
 
 func main() {
-	var urls []string = []string{"https://www.youtube.com/watch?v=<video_id>"}
+	var url string = "https://www.youtube.com/watch?v=<video_id>"
 	var dir string = "/home/lavrs/download"
-
-	download.Download(urls, dir)
+	download.Start(url, "", dir)
+	
+	var file = "/home/lavrs/videos.txt"
+	download.Start("", file, dir)
 }
 ```

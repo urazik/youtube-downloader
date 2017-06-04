@@ -1,153 +1,198 @@
 package download
 
 import (
-    "errors"
-    "fmt"
-    "io"
-    "io/ioutil"
-    "net/http"
-    "net/url"
-    "os"
-    "path/filepath"
-    "strings"
-    "log"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	u "net/url"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
+// errors const
+const (
+	fpErr = "File parsing error"
+	upErr = "Url parsing error"
+	cfErr = "Create file error"
+	dErr  = "Donwload error"
+)
+
+// for progress bar
 type progress struct {
-    io.Reader
-    current int64
-    title   string
-    length  int64
+	io.Reader
+	current int64
+	total   int64
+	title   string
 }
 
-func (pr *progress) Read(p []byte) (int, error) {
-    var (
-        n   int
-        err error
-    )
+// update progress bar
+func (p *progress) Read(b []byte) (int, error) {
+	var bytesToMB float64 = 1048576
 
-    if n, err = pr.Reader.Read(p); err == nil {
-        pr.current += int64(n)
-        var bytesToMB float64 = 1048576
+	n, err := p.Reader.Read(b)
+	if err == nil {
+		p.current += int64(n)
 
-        fmt.Printf(
-            "%s   %vMB / %vMB   %v%%\r",
-            pr.title,
-            fmt.Sprintf("%.2f", float64(pr.current)/bytesToMB),
-            fmt.Sprintf("%.2f", float64(pr.length)/bytesToMB),
-            int(float64(pr.current)/float64(pr.length)*float64(100)+1),
-        )
-    }
+		fmt.Printf(
+			"%s   %vMB / %vMB   %v\r",
+			p.title,
+			fmt.Sprintf("%.2f", float64(p.current)/bytesToMB),
+			fmt.Sprintf("%.2f", float64(p.total)/bytesToMB),
+			int(float64(p.current)/float64(p.total)*float64(100)+1),
+		)
+	}
 
-    return n, err
+	return n, err
 }
 
-func GetUrlsFromFile(path string) []string {
-    absPath, err := filepath.Abs(path)
-    check(err)
-    file, err := ioutil.ReadFile(absPath)
-    check(err)
+// get urls from file
+func getFileUrls(path string) []string {
+	// get abs path
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		log.Fatal(fpErr)
+	}
 
-    urls := make([]string, 0)
+	// read file
+	file, err := ioutil.ReadFile(absPath)
+	if err != nil {
+		log.Fatal(fpErr)
+	}
 
-    for _, s := range strings.Split(string(file), "\n") {
-        urls = append(urls, s)
-    }
+	// parse urls
+	urls := make([]string, 0)
+	for _, s := range strings.Split(string(file), "\n") {
+		urls = append(urls, s)
+	}
 
-    return urls
+	return urls
 }
 
-func urlParsing(u string) (string, string, error) {
-    videoUrl, err := url.Parse(u)
-    check(err)
-    m, err := url.ParseQuery(videoUrl.RawQuery)
-    check(err)
+// parse one url
+func urlParsing(url string) (string, string) {
+	// parse youtube video url
+	vUrl, err := u.Parse(url)
+	if err != nil {
+		log.Fatal(upErr)
+	}
+	m, err := u.ParseQuery(vUrl.RawQuery)
+	if err != nil {
+		log.Fatal(upErr)
+	}
+	if len(m) == 0 {
+		log.Fatal(upErr)
+	}
 
-    if len(m) == 0 {
-        return "", "", errors.New("parse error")
-    }
+	// get video info
+	resp, err := http.Get("http://www.youtube.com/get_video_info?video_id=" + m["v"][0])
+	if err != nil {
+		log.Fatal(upErr)
+	}
+	defer resp.Body.Close()
 
-    getVideoInfoURL := "http://www.youtube.com/get_video_info?video_id=" + m["v"][0]
-    resp, err := http.Get(getVideoInfoURL)
-    check(err)
-    defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(upErr)
+	}
 
-    body, err := ioutil.ReadAll(resp.Body)
-    check(err)
+	// parse video meta
+	meta, err := u.ParseQuery(string(body))
+	if err != nil {
+		log.Fatal(upErr)
+	}
+	if meta["status"][0] == "fail" {
+		log.Fatal(upErr)
+	}
 
-    metadata, err := url.ParseQuery(string(body))
-    check(err)
+	// get download video urls
+	dUrls, err := u.ParseQuery(meta["url_encoded_fmt_stream_map"][0])
+	if err != nil {
+		log.Fatal(upErr)
+	}
 
-    if metadata["status"][0] == "fail" {
-        return "", "", errors.New("parse error")
-    }
+	// to create a file in windows
+	r := strings.NewReplacer(
+		"\\", "",
+		"/", "",
+		":", "",
+		"*", "",
+		"?", "",
+		"\"", "",
+		"<", "",
+		">", "",
+		"|", "",
+	)
 
-    URLEncodedFmtStreamMap, err := url.ParseQuery(metadata["url_encoded_fmt_stream_map"][0])
-    check(err)
-
-    r := strings.NewReplacer(
-        "\\", "",
-        "/", "",
-        ":", "",
-        "*", "",
-        "?", "",
-        "\"", "",
-        "<", "",
-        ">", "",
-        "|", "",
-    )
-    title := r.Replace(metadata["title"][0])
-
-    return URLEncodedFmtStreamMap["url"][0], title, nil
+	return dUrls["url"][0], r.Replace(meta["title"][0])
 }
 
+// create file
 func createFile(dir, title string) *os.File {
-    if strings.LastIndex(dir, string(filepath.Separator)) != len(dir)-1 {
-        dir = dir + string(filepath.Separator)
-    }
+	// check for path separator
+	if strings.LastIndex(dir, string(filepath.Separator)) != len(dir)-1 {
+		dir = dir + string(filepath.Separator)
+	}
 
-    path := dir + title + ".mp4"
+	// check for file exists
+	path := dir + title + ".mp4"
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		// if exists -> remove
+		err := os.Remove(path)
+		if err != nil {
+			log.Fatal(cfErr)
+		}
+	}
 
-    if _, err := os.Stat(path); !os.IsNotExist(err) {
-        err := os.Remove(path)
-        check(err)
-    }
-
-    out, err := os.Create(path)
-    check(err)
-
-    return out
+	// create file
+	out, err := os.Create(path)
+	if err != nil {
+		log.Fatal(cfErr)
+	}
+	return out
 }
 
-func Download(urls []string, dir string) {
-    fmt.Print("Start download\n")
+// Start start videos download
+func Start(url, file, dir string) {
+	var urls []string
 
-    for _, u := range urls {
-        fmt.Println()
+	// cli returns url or file
+	if url != "" {
+		urls = append(urls, url)
+	} else {
+		urls = getFileUrls(file)
+	}
 
-        dUrl, title, err := urlParsing(u)
-        check(err)
+	fmt.Printf("Start downloading %v videos", len(urls))
 
-        out := createFile(dir, title)
-        defer out.Close()
+	for _, url := range urls {
+		fmt.Println()
 
-        resp, err := http.Get(dUrl)
-        check(err)
-        defer resp.Body.Close()
+		// parse url
+		dUrl, title := urlParsing(url)
 
-        _, err = io.Copy(out, &progress{
-            Reader: resp.Body,
-            title:  title,
-            length: resp.ContentLength,
-        })
-        check(err)
-    }
+		// create file
+		out := createFile(dir, title)
+		defer out.Close()
 
-    fmt.Print("\n\nDownload end")
-}
+		// download video
+		resp, err := http.Get(dUrl)
+		if err != nil {
+			log.Fatal(dErr)
+		}
+		defer resp.Body.Close()
 
-func check(err error) {
-    if err != nil {
-        log.Fatal("Oops, some error! Check the urls or file path.", err)
-    }
+		_, err = io.Copy(out, &progress{
+			Reader: resp.Body,
+			title:  title,
+			total:  resp.ContentLength,
+		})
+		if err != nil {
+			log.Fatal(dErr)
+		}
+	}
+
+	fmt.Print("\nDownload finished")
 }
